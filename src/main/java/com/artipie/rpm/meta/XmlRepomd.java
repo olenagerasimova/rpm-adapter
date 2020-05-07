@@ -23,7 +23,6 @@
  */
 package com.artipie.rpm.meta;
 
-import com.artipie.rpm.misc.UncheckedFunc;
 import com.artipie.rpm.pkg.Checksum;
 import java.io.Closeable;
 import java.io.IOException;
@@ -86,8 +85,8 @@ public final class XmlRepomd implements Closeable {
 
     /**
      * Ctor.
-     * @param stream Underling stream
      * @param path Repomd path
+     * @param stream Underling stream
      */
     private XmlRepomd(final Path path, final OutputStream stream) {
         this.path = path;
