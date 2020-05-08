@@ -68,7 +68,7 @@ public final class XmlAlter {
      * @throws IOException When error occurs
      */
     public void pkgAttr(final String tag, final String value) throws IOException {
-        final Path trf = Files.createTempFile("", ".xml");
+        final Path trf = Files.createTempFile("trf", ".xml");
         try (
             InputStream input = Files.newInputStream(this.file);
             OutputStream out = Files.newOutputStream(trf)) {
@@ -84,6 +84,8 @@ public final class XmlAlter {
                     writer.add(event);
                 }
             }
+            writer.close();
+            reader.close();
         } catch (final XMLStreamException err) {
             throw new IOException("Failed to alter file", err);
         }
