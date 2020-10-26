@@ -28,7 +28,6 @@ import com.artipie.asto.Storage;
 import com.artipie.asto.SubStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.rpm.hm.StorageHasMetadata;
-import com.artipie.rpm.hm.StorageHasRepoMd;
 import io.reactivex.Completable;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -44,7 +43,6 @@ import org.cactoos.list.Mapped;
 import org.cactoos.scalar.AndInThreads;
 import org.cactoos.scalar.Unchecked;
 import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
 import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
@@ -66,7 +64,6 @@ import org.llorllale.cactoos.matchers.IsTrue;
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  * @checkstyle MagicNumberCheck (500 lines)
  * @checkstyle IllegalCatchCheck (500 lines)
- * @checkstyle ClassFanOutComplexityCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidCatchingGenericException")
 final class RpmTest {
@@ -81,10 +78,10 @@ final class RpmTest {
     @Test
     void updatesDifferentReposSimultaneouslyTwice() throws Exception {
         final Storage storage = new InMemoryStorage();
-        final RepoConfig config = new RepoConfig.Simple(
-            Digest.SHA256, StandardNamingPolicy.SHA1, true
+        final boolean filelists = true;
+        final Rpm repo =  new Rpm(
+            storage, StandardNamingPolicy.SHA1, Digest.SHA256, filelists
         );
-        final Rpm repo =  new Rpm(storage, config);
         final List<String> keys = new ListOf<>("one", "two", "three");
         final CountDownLatch latch = new CountDownLatch(keys.size());
         final List<Scalar<Boolean>> tasks = new Mapped<>(
@@ -105,13 +102,14 @@ final class RpmTest {
         new AndInThreads(tasks).value();
         new AndInThreads(tasks).value();
         keys.forEach(
-            key -> MatcherAssert.assertThat(
-                new SubStorage(new Key.From(key), storage),
-                Matchers.allOf(
-                    new StorageHasRepoMd(config),
-                    new StorageHasMetadata(2, config.filelists(), RpmTest.tmp)
-                )
-            )
+            key -> {
+                final Key res = new Key.From(key, "repodata");
+                RpmTest.repomdIsPresent(storage, res);
+                MatcherAssert.assertThat(
+                    new SubStorage(new Key.From(key), storage),
+                    new StorageHasMetadata(2, filelists, RpmTest.tmp)
+                );
+            }
         );
     }
 
@@ -235,6 +233,20 @@ final class RpmTest {
             "Storage has no locks",
             storage.list(Key.ROOT).join().stream().noneMatch(key -> key.string().contains("lock")),
             new IsEqual<>(true)
+        );
+    }
+
+    /**
+     * Checks that repomd is present.
+     * @param storage Storage
+     * @param key Key
+     */
+    private static void repomdIsPresent(final Storage storage, final Key key) {
+        MatcherAssert.assertThat(
+            "Repomd is present",
+            storage.list(key).join().stream()
+                .map(Key::string).filter(str -> str.contains("repomd")).count(),
+            new IsEqual<>(1L)
         );
     }
 }
